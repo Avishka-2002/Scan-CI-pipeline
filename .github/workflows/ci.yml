@@ -1,0 +1,55 @@
+name: CI Pipeline with Terraform, tfsec, Trivy
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform Plan
+        run: terraform -chdir=terraform plan
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform apply -auto-approve
+
+  tfsec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image
+        run: docker build -t ci-pipeline-app:latest ./app
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ci-pipeline-app:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
